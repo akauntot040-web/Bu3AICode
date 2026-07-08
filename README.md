@@ -1,0 +1,169 @@
+# PromptAgent
+
+![CI](https://github.com/your-org/promptagent/actions/workflows/ci.yml/badge.svg)
+
+**AI API不要を基本としつつ、望めばGoogle AI Studioで自律化もできる開発支援CLI。**
+
+PromptAgentは、既定ではOpenAI/Anthropic/Gemini/Ollama等のAI APIや
+ローカルLLMに一切依存せず、ChatGPTやClaudeのWeb版チャットへ
+**人間がコピー&ペースト**することを前提に設計されています。
+利用者が明示的に選んだ場合に限り、Google AI Studio(Gemini API)との
+直接連携・自律コーディングも利用できます(詳細は後述)。
+
+> PromptAgentはClaude Codeのコピーではありません。コード・デザイン・
+> ロゴ・名称・商標は一切流用せず、ゼロから独自実装されたOSSプロジェクトです。
+
+## 特徴
+
+- 🎨 **美しいCLI** — Textual + Richによるフェードインロゴ、ステータスバー、
+  Diffビューア、シンタックスハイライト、コマンドパレット
+- 🔍 **プロジェクト解析** — Python/JS/TS/HTML/CSS/Markdown/JSON/YAML/Rust/Go/Java等を自動検出
+- 🧠 **コンテキスト最適化** — 巨大プロジェクトでも必要なファイルのみ抽出しトークン量を最適化
+- 🔀 **Git完全対応** — status/diff/commit/checkout/branch/stash/log/blame/merge/rebase
+- 🧪 **テスト/Lint自動実行** — pytest/Jest/Cargo test/Go test、ruff/eslint/mypy等
+- 📝 **JSON形式の入出力** — AIへのリクエストも、AIからの回答も構造化JSONで
+  やり取りできる(Markdown+正規表現より頑健)。`prompt_format: markdown` で
+  従来形式にも切り替え可能
+- 🔁 **Human Loop** — プロンプトをクリップボードへコピー→AI回答を貼り付け→自動解析
+- 🩹 **Patch Engine + 3-wayマージ** — 安全なファイル適用・バックアップ・
+  ロールバック・外部変更との自動マージ
+- 🤖 **Agent Engine** — AI以外の作業（パッチ適用・テスト・Lint・Git Diff）を全自動化
+- 🧬 **Google AI Studio連携(オプトイン)** — `ai_backend.provider: google_ai_studio`
+  を設定した場合のみ、Gemini APIを直接呼び出せる。このときだけ`/auto`による
+  **自律コーディングループ**(人間の介入なしにAIとの往復を繰り返す)が使える。
+  それ以外の状態では、AIモデルは一切呼び出されず、従来通りHuman Loopのみで動作する
+- 🔌 **プラグイン/フック対応** — Pythonで機能拡張可能
+
+## AIとのやり取り: JSON形式(既定)
+
+`/prompt <指示文>` でAIへ提示されるプロンプトは既定でJSON形式です。
+
+```json
+{
+  "instruction": "ログイン機能のバグを修正してください",
+  "project_name": "myapp",
+  "context_files": [{"path": "src/auth.py", "language": "Python", "content": "..."}],
+  "response_json_schema": { "...": "AIが従うべき出力スキーマ" }
+}
+```
+
+AIには`response_json_schema`に従ったJSON(`files` / `commands` / `todos` /
+`notes` / `task_complete`を含む)で回答するよう求めます。これにより、
+Markdown正規表現パースより解析が堅牢になります。従来のMarkdown形式に
+戻したい場合は `config.yaml` で `prompt_format: markdown` を設定してください。
+
+## Google AI Studio連携と自律コーディング
+
+既定(`ai_backend.provider: human`)では、PromptAgentはAI APIを一切呼び出さず、
+Human Loop(コピー&ペースト)のみで動作します。
+
+`config.yaml` で明示的に以下を設定した場合に限り、Google AI Studio
+(Gemini API)を直接呼び出せます。
+
+```yaml
+ai_backend:
+  provider: google_ai_studio
+  model: gemini-2.0-flash
+  api_key_env: GOOGLE_API_KEY   # この環境変数からAPIキーを読み込む
+```
+
+この設定が有効な場合のみ、`/auto <指示文>` コマンドで**自律コーディング
+ループ**(プロンプト生成→Gemini呼び出し→JSON応答パース→ファイル適用→
+テスト/Lint→必要なら次のプロンプトへ、を人間の介入なく繰り返す)が使えます。
+最大反復回数は `ai_backend.max_autonomous_iterations` で制御できます。
+
+他のAI API(OpenAI/Anthropic等)やローカルLLMは意図的にサポートしていません。
+
+## インストール
+
+```bash
+pip install -e .
+```
+
+## 使い方
+
+```bash
+cd あなたのプロジェクト
+promptagent
+```
+
+起動後、以下のようなコマンドが使えます。
+
+| コマンド | 説明 |
+|---|---|
+| `/prompt <指示文>` | AIへ送るプロンプトを生成し、Human Loopを開始する |
+| `/status` | Gitステータスを表示 |
+| `/diff` | Git差分を表示 |
+| `/commit <メッセージ>` | コミットを実行 |
+| `/test` | テストを自動実行 |
+| `/lint` | Lint/型チェックを自動実行 |
+| `/tree` | ファイルツリーを表示 |
+| `/find <キーワード>` | ファイルをあいまい検索 |
+| `/goto <ファイル> <行> <列>` | 定義ジャンプ(Python) |
+| `/refs <ファイル> <行> <列>` | 参照検索(Python) |
+| `/symbols <ファイル>` | シンボル一覧(Python) |
+| `/tui` | フルスクリーンTUI(Textual)を起動 |
+| `/help` | コマンド一覧を表示 |
+| `/quit` | 終了 |
+
+## フルスクリーンUI
+
+`/tui` コマンドで、サイドバーのファイルツリー・メインログパネル・
+コマンド入力欄・ステータスバーを備えたTextualベースのフルスクリーンUIへ
+切り替えられます。行指向CLIで使える全コマンドがそのまま使えます。
+
+- `config.yaml` の `theme` セクションはTUI起動時に動的にCSSへ反映されます。
+- AI回答を適用してファイルが更新されると、サイドバーのファイルツリーが
+  自動的に再構築されます(`AFTER_PATCH`フック経由)。
+- `Ctrl+P` でコマンドパレット(あいまい検索)を開けます。
+
+## 安全機構: 競合検出と3-wayマージ
+
+`/prompt` でAIへコンテキストを提示した後、AIの回答を待つ間に該当ファイルが
+外部(エディタや他プロセス)で変更されると、PromptAgentは以下のルールで
+自動的に3-wayマージを試みます。
+
+- **変更箇所が重複しない場合** → 自動マージに成功し、両方の変更を反映して適用
+- **同じ箇所を両方が変更した場合** → Gitと同様の競合マーカー
+  (`<<<<<<< THEIRS` / `=======` / `>>>>>>> OURS`)を挿入したファイルとして適用し、
+  次回の`/prompt`で手動解決を促す下書きプロンプトを自動生成
+
+## CI
+
+`.github/workflows/ci.yml` でUbuntu/macOS/Windows × Python 3.12/3.13の
+マトリクスビルドを実行し、ruff・mypy・pytestを自動チェックします。
+
+## プラグイン
+
+`plugins/` ディレクトリにPythonファイルを置くだけで自動的にロードされます。
+各ファイルは `register(hook_manager)` 関数を実装してください。
+
+```python
+from promptagent.hooks.hook_manager import HookEvent, HookManager
+
+def register(hook_manager: HookManager) -> None:
+    def on_after_patch(context: dict) -> None:
+        print("パッチが適用されました:", context["batch"])
+    hook_manager.register(HookEvent.AFTER_PATCH, on_after_patch)
+```
+
+同梱サンプル:
+- `plugins/notify_on_patch.py` — パッチ適用結果をログ通知
+- `plugins/collect_todos.py` — プロンプト送信前にプロジェクト内のTODOを集計
+
+利用可能なフックイベント: `BEFORE_PROMPT` / `AFTER_PROMPT` / `BEFORE_PATCH` /
+`AFTER_PATCH` / `BEFORE_TEST` / `AFTER_TEST` / `BEFORE_LINT` / `AFTER_LINT` /
+`BEFORE_COMMIT` / `AFTER_COMMIT`
+
+## 開発
+
+```bash
+pip install -e ".[dev]"
+pytest
+ruff check .
+mypy src
+```
+
+## ライセンス
+
+MIT License

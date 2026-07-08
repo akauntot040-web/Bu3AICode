@@ -1,0 +1,3 @@
+[console_scripts]
+pa = promptagent.cli:main
+promptagent = promptagent.cli:main

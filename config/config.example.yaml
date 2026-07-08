@@ -1,0 +1,71 @@
+theme:
+  name: midnight
+  accent: "#7C5CFF"
+  background: "#0B0B0F"
+  surface: "#141419"
+  text: "#E6E6EA"
+  muted: "#6B6B76"
+  success: "#4ADE80"
+  warning: "#FBBF24"
+  error: "#F87171"
+
+keybindings:
+  command_palette: ctrl+p
+  quit: ctrl+c
+  clear_screen: ctrl+l
+  search_history: ctrl+r
+  interrupt: ctrl+d
+  submit: enter
+  fuzzy_find: ctrl+f
+
+context:
+  max_tokens: 12000
+  max_file_size_kb: 256
+  ignore_patterns:
+    - .git
+    - __pycache__
+    - node_modules
+    - .venv
+    - venv
+    - dist
+    - build
+    - "*.lock"
+  priority_extensions:
+    - .py
+    - .ts
+    - .tsx
+    - .js
+    - .jsx
+    - .rs
+    - .go
+    - .java
+
+agent:
+  auto_run_tests: true
+  auto_run_lint: true
+  auto_type_check: true
+  auto_git_diff: true
+  stop_on_test_failure: false
+
+# AIバックエンド設定。
+# provider: "human" (既定) — 従来通りHuman Loop(コピー&ペースト)でやり取りする。
+#           入出力はJSON形式(下記prompt_format参照)だが、AIモデル自体は
+#           PromptAgentに一切組み込まれない。
+# provider: "google_ai_studio" — Google AI Studio(Gemini API)を直接呼び出す。
+#           この場合のみ `/auto <指示文>` による自律コーディングループが使える。
+#           他のAI API(OpenAI/Anthropic等)やローカルLLMは意図的に非対応。
+ai_backend:
+  provider: human
+  model: gemini-2.0-flash
+  api_key_env: GOOGLE_API_KEY   # このシェル変数からAPIキーを読み込む
+  api_key: ""                   # 直接ここに書く場合はこちら(非推奨)
+  max_autonomous_iterations: 5
+  request_timeout_seconds: 120.0
+  temperature: 0.2
+
+# AIとの入出力形式。"json"(既定・推奨)か"markdown"(従来形式)。
+prompt_format: json
+
+language: ja
+log_level: INFO
+editor: code
